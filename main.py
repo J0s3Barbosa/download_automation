@@ -20,7 +20,6 @@ def login(page):
     page.get_by_role("button", name="Acessar o Sistema>").click()
     page.wait_for_timeout(2)
 
-
 def get_select_options(page, select_id):
     select_element = page.query_selector(f"select#{select_id}")
     if select_element:
@@ -35,12 +34,10 @@ def get_select_options(page, select_id):
         print(f"Select element with ID '{select_id}' not found.")
         return []
 
-
 def create_folder_if_not_exists(folder_path):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
         print(f"Folder '{folder_path}' created.")
-
 
 def download_file(url, save_name, save_directory):
     response = requests.get(url)
@@ -56,7 +53,6 @@ def download_file(url, save_name, save_directory):
     else:
         print("Failed to download the file")
         return None
-
 
 def extract_names_and_urls(url):
     with sync_playwright() as p:
@@ -124,6 +120,5 @@ def extract_names_and_urls(url):
                 downloaded_file = download_file(
                     item["url"][:-1], f"{safe_file_name}.pdf", path_save)
         browser.close()
-
 
 extract_names_and_urls(url)
