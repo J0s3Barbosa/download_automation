@@ -1,16 +1,18 @@
 from playwright.sync_api import sync_playwright
 import re
-import requests
 from dotenv import load_dotenv
 import os
+import subprocess
+
 # Load environment variables from .env file
 load_dotenv()
 # Read the value of the environment variable
 user = os.getenv("USER")
 password = os.getenv("PASS")
-url = 'https://repositorio.educacao.sp.gov.br/Inicio/MidiasCMSP#'
-main_directory = f"playwright/download/"
+url = os.getenv("URL")
+MAIN_DIRECTORY = os.getenv("MAIN_DIRECTORY")
 path_save = None
+BIMESTER = os.getenv("BIMESTER")
 
 
 def login(page):
@@ -18,7 +20,7 @@ def login(page):
     page.get_by_placeholder("Digite aqui seu registro").fill(str(user))
     page.get_by_placeholder("Digite aqui sua senha").fill(str(password))
     page.get_by_role("button", name="Acessar o Sistema>").click()
-    page.wait_for_timeout(2)
+    page.wait_for_timeout(2000)
 
 def get_select_options(page, select_id):
     select_element = page.query_selector(f"select#{select_id}")
@@ -40,19 +42,21 @@ def create_folder_if_not_exists(folder_path):
         print(f"Folder '{folder_path}' created.")
 
 def download_file(url, save_name, save_directory):
-    response = requests.get(url)
-
-    if response.status_code == 200:
+    try:
+        # Ensure the save directory exists, create if not
+        os.makedirs(save_directory, exist_ok=True)
+        
+        # Full path to save the file
         save_path = os.path.join(save_directory, save_name)
-
-        with open(save_path, 'wb') as f:
-            f.write(response.content)
-
-        print(f"Downloaded and saved as: {save_path}")
-        return save_path
-    else:
-        print("Failed to download the file")
-        return None
+        
+        # Run the curl command to download the file
+        subprocess.run(['curl', '-o', save_path, url], check=True)
+        
+        print(f"File downloaded successfully and saved at {save_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading file: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def extract_names_and_urls(url):
     with sync_playwright() as p:
@@ -61,23 +65,21 @@ def extract_names_and_urls(url):
         page.goto(url)
         session_cookies = page.context.cookies()
         login(page)
+        page.wait_for_timeout(5000)
+
         # Set the captured session cookies to maintain login state
         page.context.add_cookies(session_cookies)
-        page.get_by_label("Bimestre").select_option("3")
-        page.get_by_label("Materiais Digitais").get_by_text(
-            "Componente Curricular").click()
-        page.reload()
-        page.get_by_label("Bimestre").select_option("3")
+        page.get_by_label("Bimestre").select_option(BIMESTER)
         page.get_by_label("Materiais Digitais").get_by_text(
             "Componente Curricular").click()
         select_id = "cdComponenteCurricular"
         option_data = get_select_options(page, select_id)
         for value, name in option_data:
             print(f"Value: {value}, Name: {name}")
-            path_save = f"{main_directory}/{name}"
+            path_save = f"{MAIN_DIRECTORY}/{name}"
             create_folder_if_not_exists(path_save)
 
-            page.get_by_label("Bimestre").select_option("3")
+            page.get_by_label("Bimestre").select_option(BIMESTER)
             # foreach option_values download files
             page.get_by_label("Materiais Digitais").get_by_label(
                 "Componente Curricular").select_option(value)
@@ -119,6 +121,7 @@ def extract_names_and_urls(url):
             # download
                 downloaded_file = download_file(
                     item["url"][:-1], f"{safe_file_name}.pdf", path_save)
+                
         browser.close()
 
 extract_names_and_urls(url)
