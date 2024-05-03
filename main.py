@@ -22,7 +22,10 @@ def login(page):
     page.get_by_role("button", name="Acessar o Sistema>").click()
     page.wait_for_timeout(2000)
 
-def get_select_options(page, select_id):
+def get_all_subject_matters(page, select_id):
+    '''
+    get all subject matters available
+    '''
     select_element = page.query_selector(f"select#{select_id}")
     if select_element:
         options = select_element.query_selector_all("option")
@@ -36,7 +39,7 @@ def get_select_options(page, select_id):
         print(f"Select element with ID '{select_id}' not found.")
         return []
 
-def create_folder_if_not_exists(folder_path):
+def create_subject_matter_folder_if_not_exists(folder_path):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
         print(f"Folder '{folder_path}' created.")
@@ -57,6 +60,31 @@ def download_file(url, save_name, save_directory):
         print(f"Error downloading file: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
+        
+def is_field_selected(page, selector):
+    field_value = page.eval_on_selector(selector, '(element) => element.value')
+    return field_value != ""
+
+def select_and_search(page, value):
+    page.get_by_label("Bimestre").select_option(BIMESTER)
+    # foreach option_values download files
+    page.get_by_label("Materiais Digitais").get_by_label(
+        "Componente Curricular").select_option(value)
+
+    page.get_by_role("button", name="Pesquisar").click()
+
+    page.wait_for_timeout(4000)
+
+def reload_if_fail(page, subject_value):
+    selector = '.codigoTipoEnsino'  # Replace this with your selector
+    is_selected = is_field_selected(page, selector)
+    if is_selected:
+        print("Field has a value selected:", is_selected)
+    else:
+        print("Field does not have a value selected")
+        page.reload()
+        select_and_search(page, subject_value)
+        is_selected = is_field_selected(page, selector)
 
 def extract_names_and_urls(url):
     with sync_playwright() as p:
@@ -65,27 +93,24 @@ def extract_names_and_urls(url):
         page.goto(url)
         session_cookies = page.context.cookies()
         login(page)
-        page.wait_for_timeout(5000)
-
+        page.get_by_role("tab", name="Vídeos").click()
+        page.get_by_role("tab", name="Materiais Digitais").click()
+        page.wait_for_timeout(8000)
         # Set the captured session cookies to maintain login state
         page.context.add_cookies(session_cookies)
+                
         page.get_by_label("Bimestre").select_option(BIMESTER)
         page.get_by_label("Materiais Digitais").get_by_text(
             "Componente Curricular").click()
         select_id = "cdComponenteCurricular"
-        option_data = get_select_options(page, select_id)
+        option_data = get_all_subject_matters(page, select_id)
         for value, name in option_data:
             print(f"Value: {value}, Name: {name}")
             path_save = f"{MAIN_DIRECTORY}/{name}"
-            create_folder_if_not_exists(path_save)
+            create_subject_matter_folder_if_not_exists(path_save)
 
-            page.get_by_label("Bimestre").select_option(BIMESTER)
-            # foreach option_values download files
-            page.get_by_label("Materiais Digitais").get_by_label(
-                "Componente Curricular").select_option(value)
-
-            page.get_by_role("button", name="Pesquisar").click()
-            page.wait_for_timeout(3000)
+            select_and_search(page, value)
+            reload_if_fail(page, value)
             # Get the HTML content of the page
             html_code = page.content()
 
@@ -96,6 +121,7 @@ def extract_names_and_urls(url):
 
             # Find all elements with class "col-12 col-md-10 mb-2 item"
             items = page.query_selector_all('.col-12.col-md-10.mb-2.item')
+            # create a list with title and urls, so we can download the files with friendly names
             for item in items:
                 title_element = item.query_selector('.titulo-aula')
                 if title_element:
@@ -109,6 +135,7 @@ def extract_names_and_urls(url):
                         if url_match:
                             url = url_match.group(1)
                             names_and_urls.append({"title": title, "url": url})
+            #  iterate thru title and urls to download and name the files               
             for item in names_and_urls:
                 print("Title:", item["title"])
                 print("URL:", item["url"][:-1])
