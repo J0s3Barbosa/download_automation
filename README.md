@@ -24,3 +24,8 @@
     - run main file
 ```
 
+# Running Codegen
+```bach
+    - playwright codegen https://repositorio.educacao.sp.gov.br/Inicio/MidiasCMSP#
+
+```
