@@ -82,7 +82,8 @@ def reload_if_fail(page, subject_value):
         print("Field has a value selected:", is_selected)
     else:
         print("Field does not have a value selected")
-        page.reload()
+        page.get_by_role("tab", name="Vídeos").click()
+        page.get_by_role("tab", name="Materiais Digitais").click()
         select_and_search(page, subject_value)
         is_selected = is_field_selected(page, selector)
 
@@ -95,7 +96,7 @@ def extract_names_and_urls(url):
         login(page)
         page.get_by_role("tab", name="Vídeos").click()
         page.get_by_role("tab", name="Materiais Digitais").click()
-        page.wait_for_timeout(8000)
+        page.wait_for_timeout(3000)
         # Set the captured session cookies to maintain login state
         page.context.add_cookies(session_cookies)
                 
@@ -111,11 +112,6 @@ def extract_names_and_urls(url):
 
             select_and_search(page, value)
             reload_if_fail(page, value)
-            # Get the HTML content of the page
-            html_code = page.content()
-
-            # Set the content of the page to the provided HTML code
-            page.set_content(html_code)
 
             names_and_urls = []
 
