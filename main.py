@@ -94,6 +94,7 @@ def extract_names_and_urls(url):
         page.goto(url)
         session_cookies = page.context.cookies()
         login(page)
+        
         page.get_by_role("tab", name="Vídeos").click()
         page.get_by_role("tab", name="Materiais Digitais").click()
         page.wait_for_timeout(3000)
@@ -101,6 +102,13 @@ def extract_names_and_urls(url):
         page.context.add_cookies(session_cookies)
                 
         page.get_by_label("Bimestre").select_option(BIMESTER)
+        page.wait_for_timeout(5000)
+
+        # Set the captured session cookies to maintain login state
+        page.context.add_cookies(session_cookies)
+        bimester = "2"
+        page.get_by_label("Bimestre").select_option(bimester)
+
         page.get_by_label("Materiais Digitais").get_by_text(
             "Componente Curricular").click()
         select_id = "cdComponenteCurricular"
@@ -112,6 +120,19 @@ def extract_names_and_urls(url):
 
             select_and_search(page, value)
             reload_if_fail(page, value)
+            
+            page.get_by_label("Bimestre").select_option(bimester)
+            # foreach option_values download files
+            page.get_by_label("Materiais Digitais").get_by_label(
+                "Componente Curricular").select_option(value)
+
+            page.get_by_role("button", name="Pesquisar").click()
+            page.wait_for_timeout(3000)
+            # Get the HTML content of the page
+            html_code = page.content()
+
+            # Set the content of the page to the provided HTML code
+            page.set_content(html_code)
 
             names_and_urls = []
 
